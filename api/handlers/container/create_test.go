@@ -493,6 +493,7 @@ func getDefaultCreateOpt(conf config.Config) types.ContainerCreateOptions {
 
 		// #region for logging flags
 		LogDriver: "json-file", // nerdctl default.
+		LogOpt:    []string{},
 		// #endregion
 
 		// #region for image pull and verify types
