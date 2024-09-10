@@ -385,6 +385,68 @@ func ContainerCreate(opt *option.Option) {
 			out := command.StdoutStr(opt, "start", "-a", testContainerName)
 			Expect(out).Should(Equal(workdir))
 		})
+		It("should create a container with specified memory allocation", func() {
+			// define options
+			options.HostConfig.Memory = 209715200 // 200 MiB
+			options.Cmd = []string{"sleep", "Infinity"}
+
+			// create container
+			statusCode, ctr := createContainer(uClient, url, testContainerName, options)
+			Expect(statusCode).Should(Equal(http.StatusCreated))
+			Expect(ctr.ID).ShouldNot(BeEmpty())
+
+			// start container
+			command.Run(opt, "start", testContainerName)
+
+			// verify memory allocation from stats command
+			resp := command.StdoutStr(opt, "stats", "--no-stream", "--format", "'{{ json .}}'", testContainerName)
+			var stats map[string]string
+			err := json.Unmarshal([]byte(strings.Trim(resp, "'")), &stats)
+			Expect(err).Should(BeNil())
+			Expect(stats).Should(HaveKey("MemUsage"))
+
+			memoryLimit := strings.Split(stats["MemUsage"], " / ")[1]
+			Expect(memoryLimit).Should(Equal("200MiB"))
+		})
+		It("should create a container with specified logging options", func() {
+			// define options
+			options.Cmd = []string{"sleep", "Infinity"}
+			options.HostConfig.LogConfig = types.LogConfig{
+				Type:   "json-file",
+				Config: map[string]string{"key": "value"},
+			}
+
+			// create container
+			statusCode, ctr := createContainer(uClient, url, testContainerName, options)
+			Expect(statusCode).Should(Equal(http.StatusCreated))
+			Expect(ctr.ID).ShouldNot(BeEmpty())
+
+			// inspect container
+			resp := command.Stdout(opt, "inspect", testContainerName)
+			var inspect []*dockercompat.Container
+			err := json.Unmarshal(resp, &inspect)
+			Expect(err).Should(BeNil())
+			Expect(inspect).Should(HaveLen(1))
+
+			// check options
+			Expect(inspect[0].LogPath).ShouldNot(BeNil())
+		})
+		It("should create a container with specified network options", func() {
+			// define options
+			options.Cmd = []string{"sleep", "Infinity"}
+			options.HostConfig.DNS = []string{"8.8.8.8"}
+			options.HostConfig.DNSOptions = []string{"test-opt"}
+			options.HostConfig.DNSSearch = []string{"test.com"}
+
+			// create container
+			statusCode, ctr := createContainer(uClient, url, testContainerName, options)
+			Expect(statusCode).Should(Equal(http.StatusCreated))
+			Expect(ctr.ID).ShouldNot(BeEmpty())
+
+			// start a container and verify network settings
+			command.Run(opt, "start", testContainerName)
+			verifyNetworkSettings(opt, testContainerName, "bridge")
+		})
 	})
 }
 
