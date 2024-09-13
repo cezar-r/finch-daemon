@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/containerd/nerdctl/pkg/inspecttypes/dockercompat"
 	"github.com/docker/go-connections/nat"
@@ -447,7 +448,7 @@ func ContainerCreate(opt *option.Option) {
 			command.Run(opt, "start", testContainerName)
 			verifyNetworkSettings(opt, testContainerName, "bridge")
 		})
-		It("should create a contaner with specified restart options", func() {
+		It("should create a container with specified restart options", func() {
 			// define options
 			options.Cmd = []string{"sleep", "Infinity"}
 			options.HostConfig.RestartPolicy = types.RestartPolicy{
@@ -463,6 +464,7 @@ func ContainerCreate(opt *option.Option) {
 			// start and kill a container
 			command.Run(opt, "start", testContainerName)
 			command.Run(opt, "kill", "--signal=SIGKILL", testContainerName)
+			time.Sleep(5 * time.Second)
 
 			// inspect container
 			resp := command.Stdout(opt, "inspect", testContainerName)
@@ -474,8 +476,8 @@ func ContainerCreate(opt *option.Option) {
 			// verify container is still running
 			Expect(inspect[0].State.Running).Should(BeTrue())
 
-			// verify restart count is 0
-			Expect(inspect[0].RestartCount).Should(BeZero())
+			// verify restart count is 1
+			Expect(inspect[0].RestartCount).Should(Equal(1))
 		})
 	})
 }
