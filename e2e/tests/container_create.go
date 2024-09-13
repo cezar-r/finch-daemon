@@ -462,7 +462,7 @@ func ContainerCreate(opt *option.Option) {
 
 			// start and kill a container
 			command.Run(opt, "start", testContainerName)
-			command.Run(opt, "kill", testContainerName)
+			command.Run(opt, "kill", "--signal=SIGKILL", testContainerName)
 
 			// inspect container
 			resp := command.Stdout(opt, "inspect", testContainerName)
